@@ -522,6 +522,7 @@
   }
 
   function startPointerDrag(downEv, cs, srcEl) {
+    downEv.preventDefault();
     const startX = downEv.clientX;
     const startY = downEv.clientY;
     let active = false;
@@ -533,7 +534,9 @@
         active = true;
         draggingCs = cs;
         srcEl.style.opacity = "0.55";
+        srcEl.style.pointerEvents = "none";
         document.body.style.cursor = "grabbing";
+        window.getSelection()?.removeAllRanges();
       }
       clearDragIndicators();
       dropTarget = null;
@@ -560,6 +563,7 @@
       if (!active) return;
 
       srcEl.style.opacity = "";
+      srcEl.style.pointerEvents = "";
       document.body.style.cursor = "";
       clearDragIndicators();
       draggingCs = null;

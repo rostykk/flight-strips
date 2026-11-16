@@ -192,6 +192,8 @@ body {
   border-radius: 2px;
   min-height: 58px;
   cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
   transition: margin-left 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
   position: relative;
 }
