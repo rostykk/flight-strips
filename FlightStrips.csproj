@@ -21,9 +21,5 @@
 
   <ItemGroup>
     <EmbeddedResource Include="static\**\*" LogicalName="static/%(Filename)%(Extension)" />
-    <None Include="static\**\*">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-    </None>
   </ItemGroup>
 </Project>
