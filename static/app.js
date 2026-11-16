@@ -356,8 +356,23 @@
 
     const canList = Array.isArray(ac.can) ? ac.can : [];
     const canSet = new Set(canList.map((c) => String(c).toLowerCase()));
-    const takeoffCleared = doing === "taking off" || canSet.has("cancel takeoff") || canSet.has("reject takeoff");
-    const landingCleared = (doing === "on final" || doing === "arriving") && !canSet.has("landing") && canSet.has("go around");
+    const isTkoPhase = doing === "holding short" || doing === "lining up" || doing === "taking off";
+    if (doing === "taking off" || (isTkoPhase && (canSet.has("cancel takeoff") || canSet.has("reject takeoff")))) {
+      getOv(cs).takeoffCleared = true;
+    } else if (!isTkoPhase && ov.takeoffCleared) {
+      delete ov.takeoffCleared;
+      saveOverrides();
+    }
+    const takeoffCleared = Boolean((overrides[cs] || ov).takeoffCleared);
+
+    const isFinalPhase = doing === "on final" || doing === "arriving";
+    if (isFinalPhase && ac.yours === true && !canSet.has("landing") && !canSet.has("approach")) {
+      getOv(cs).landingCleared = true;
+    } else if (!isFinalPhase && ov.landingCleared) {
+      delete ov.landingCleared;
+      saveOverrides();
+    }
+    const landingCleared = Boolean((overrides[cs] || ov).landingCleared);
 
     return {
       callsign: cs,
