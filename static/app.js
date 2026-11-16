@@ -357,7 +357,7 @@
     const canList = Array.isArray(ac.can) ? ac.can : [];
     const canSet = new Set(canList.map((c) => String(c).toLowerCase()));
     const takeoffCleared = doing === "taking off" || canSet.has("cancel takeoff") || canSet.has("reject takeoff");
-    const landingCleared = doing === "on final" && !canSet.has("landing") && canSet.has("go around");
+    const landingCleared = (doing === "on final" || doing === "arriving") && !canSet.has("landing") && canSet.has("go around");
 
     return {
       callsign: cs,
@@ -422,9 +422,27 @@
       .trim();
   }
 
+  const STAGE_RANK = {
+    PRE: 0, CLR: 1, PUSH: 2, GND: 3, HP: 4, SEQ: 5, HDO: 6,
+    FINAL: 0, TAXI_IN: 1,
+  };
+
   function resolveStripBay(s, visibleBays, rwys) {
-    if (s.pinBay && visibleBays.some((b) => b.id === s.pinBay)) {
-      return s.pinBay;
+    if (s.pinBay) {
+      const pinnedBay = visibleBays.find((b) => b.id === s.pinBay);
+      if (pinnedBay) {
+        const bayMaxRank = Math.max(...(pinnedBay.stages || []).map((st) => STAGE_RANK[st] ?? -1), -1);
+        const liveRank = STAGE_RANK[s.stage] ?? -1;
+        // Auto-clear pin once live telemetry catches up to or passes the pinned bay
+        if (liveRank >= 0 && bayMaxRank >= 0 && liveRank >= bayMaxRank && (pinnedBay.stages || []).includes(s.stage)) {
+          delete getOv(s.callsign).pinBay;
+          delete getOv(s.callsign).order;
+          s.pinBay = "";
+          saveOverrides();
+        } else {
+          return s.pinBay;
+        }
+      }
     }
     const normRwy = (s.runway || "").trim().toUpperCase();
     const matchingStage = visibleBays.filter((b) => (b.stages || []).includes(s.stage));
@@ -457,6 +475,7 @@
     if (s.stage === "SEQ") return "acc-runway";
     if (s.stage === "HDO") return "acc-handover";
     if (s.stage === "FINAL") return "acc-inbound";
+    if (s.stage === "TAXI_IN") return (s.doing || "").toLowerCase() === "parked" ? "acc-servicing" : "acc-inbound";
     return "acc-taxi";
   }
 
