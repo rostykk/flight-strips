@@ -1,0 +1,123 @@
+<Window x:Class="FlightStrips.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="Flight Strips, a mod for Airside"
+        Icon="pack://application:,,,/Assets/flight-strips.ico"
+        Width="1520" Height="820" MinWidth="540" MinHeight="104"
+        MaxHeight="{x:Static SystemParameters.MaximizedPrimaryScreenHeight}"
+        WindowStyle="None" AllowsTransparency="True" ResizeMode="CanResizeWithGrip"
+        Background="Transparent" Foreground="#E2E8F0">
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="32" CornerRadius="6" GlassFrameThickness="0" ResizeBorderThickness="5" UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <Style x:Key="AirBtn" TargetType="Button">
+            <Setter Property="Background" Value="#1E2D38"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#334857"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,3"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="#2A3E4D"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="WinCtrlBtn" TargetType="Button" BasedOn="{StaticResource AirBtn}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="RootBorder" Background="#0F171D" CornerRadius="6" BorderBrush="#243440" BorderThickness="1">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition x:Name="TitleBarRow" Height="34"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Airside-style Title Bar -->
+        <Border Grid.Row="0" Background="#0B1116" BorderBrush="#243440" BorderThickness="0,0,0,1" Padding="10,0,6,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Source="pack://application:,,,/Assets/flight-strips.ico" Width="18" Height="18" Margin="0,0,7,0" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <TextBlock Text="FLIGHT" FontWeight="ExtraBold" FontSize="12.5" Foreground="#F8FAFC" VerticalAlignment="Center"/>
+                    <TextBlock Text="STRIPS" FontWeight="SemiBold" FontSize="12.5" Foreground="#F97316" Margin="4,0,6,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="a mod for Airside" FontSize="11" Foreground="#64748B" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                    <Button x:Name="BtnServerUrl" Style="{StaticResource AirBtn}" Content="HTTP :24775" Click="BtnServerUrl_Click" ToolTip="Click to open in external browser"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,2,0">
+                    <TextBlock Text="Opacity" Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <Slider x:Name="SliderOpacity" Width="68" Minimum="0.35" Maximum="1.0" Value="1.0" SmallChange="0.05" LargeChange="0.1"
+                            IsMoveToPointEnabled="True" VerticalAlignment="Center" Margin="0,0,4,0"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True" ValueChanged="SliderOpacity_ValueChanged"/>
+                    <TextBlock x:Name="TxtOpacityPct" Text="100%" Foreground="#CBD5E1" FontSize="10.5" Width="32"
+                               VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <Button x:Name="BtnDockOverlay" Style="{StaticResource AirBtn}" Content="1-Row Bar" Margin="0,0,5,0" Click="BtnDockOverlay_Click" ToolTip="Snap native window into a compact single-row in-game bar"/>
+                    <Button x:Name="BtnPin" Style="{StaticResource AirBtn}" Content="Pin Top" Margin="0,0,5,0" Click="BtnPin_Click"/>
+                    <Button x:Name="BtnPortCfg" Style="{StaticResource AirBtn}" Content="Settings" Margin="0,0,8,0" Click="BtnPortCfg_Click" ToolTip="Server port, streamer mode, and reset to defaults"/>
+
+                    <Button Style="{StaticResource WinCtrlBtn}" Content="─" Click="BtnMin_Click"/>
+                    <Button x:Name="BtnMax" Style="{StaticResource WinCtrlBtn}" Content="☐" Click="BtnMax_Click"/>
+                    <Button Style="{StaticResource WinCtrlBtn}" Content="✕" Click="BtnClose_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Collapsible Port & Server Config Bar -->
+        <Border x:Name="ServerPanel" Grid.Row="1" Visibility="Collapsed" Background="#131E26" BorderBrush="#2A3B48" BorderThickness="0,0,0,1" Padding="10,7">
+            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="HTTP Port:" VerticalAlignment="Center" Foreground="#CBD5E1" Margin="0,0,6,0"/>
+                <TextBox x:Name="TxtPort" Width="64" Background="#0B1116" Foreground="#F8FAFC" BorderBrush="#334857" Padding="5,2" VerticalContentAlignment="Center" Margin="0,0,10,0"/>
+                <CheckBox x:Name="ChkLan" Content="Allow LAN / Tablet" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <CheckBox x:Name="ChkStreamer" Content="Streamer Mode (Hide IPs)" Foreground="#FBBF24" VerticalAlignment="Center" Margin="0,0,10,0" Checked="ChkStreamer_Changed" Unchecked="ChkStreamer_Changed"/>
+                <Button x:Name="BtnApplyPort" Style="{StaticResource AirBtn}" Background="#EA580C" BorderBrush="#F97316" Content="Apply &amp; Restart" Click="BtnApplyPort_Click" Margin="0,0,8,0"/>
+                <Button x:Name="BtnCopyLan" Style="{StaticResource AirBtn}" Content="Copy Tablet URL" Click="BtnCopyLan_Click" Margin="0,0,8,0" ToolTip="Copies your LAN URL to clipboard without showing it on screen"/>
+                <Button x:Name="BtnResetAll" Style="{StaticResource AirBtn}" Background="#7F1D1D" BorderBrush="#DC2626" Content="Reset All to Defaults" Click="BtnResetAll_Click" Margin="0,0,10,0" ToolTip="Reset strip stages, pins/orders, bay layouts, and window dock to defaults"/>
+                <TextBlock x:Name="TxtUrls" VerticalAlignment="Center" Foreground="#93C5FD" FontFamily="Consolas" FontSize="11.5"/>
+            </WrapPanel>
+        </Border>
+
+        <!-- Embedded WebView2 Composition Control (supports WPF AllowsTransparency & Opacity on Win10/Win11) + Graceful Fallback -->
+        <Grid Grid.Row="2" Margin="0,0,0,0">
+            <wv2:WebView2CompositionControl x:Name="WebView" DefaultBackgroundColor="#162129"/>
+            <Border x:Name="FallbackPane" Visibility="Collapsed" Background="#162129" Padding="24">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="480">
+                    <TextBlock Text="WebView2 Runtime not available — local server is running!" FontSize="16" FontWeight="Bold" Margin="0,0,0,8"/>
+                    <TextBlock x:Name="TxtFallbackUrl" Text="http://127.0.0.1:24775/" Foreground="#38BDF8" FontFamily="Consolas" FontSize="14" Margin="0,0,0,14"/>
+                    <Button Style="{StaticResource AirBtn}" Background="#0284C7" Content="Open Strip Bay in Browser" Click="BtnServerUrl_Click"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+    </Border>
+</Window>

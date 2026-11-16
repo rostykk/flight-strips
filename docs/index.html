@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flight Strips, a mod for Airside — Electronic Flight Progress Strip Bay</title>
+  <link rel="icon" type="image/png" href="img/favicon.png" />
+  <style>
+    :root {
+      --bg: #0b1116;
+      --panel: #111b22;
+      --panel-2: #16232d;
+      --border: #243440;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --orange: #f97316;
+      --orange-deep: #ea580c;
+      --blue: #0295d6;
+      --sky: #38bdf8;
+      --green: #22c55e;
+      --amber: #f59e0b;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 600px at 15% -10%, rgba(2,149,214,0.12), transparent),
+                  radial-gradient(900px 500px at 90% 0%, rgba(249,115,22,0.10), transparent),
+                  var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+    }
+
+    .mono { font-family: "Cascadia Mono", Consolas, monospace; }
+    .container { max-width: 1180px; margin: 0 auto; padding: 0 22px; }
+
+    .nav {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(11, 17, 22, 0.88);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 54px; gap: 16px;
+    }
+    .brand { display: flex; align-items: center; gap: 9px; font-weight: 800; letter-spacing: 0.5px; }
+    .brand-bar { width: 4px; height: 20px; background: var(--orange); border-radius: 2px; }
+    .brand span { color: var(--orange); }
+    .nav-links { display: flex; gap: 18px; font-size: 13px; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-weight: 600; }
+    .nav-links a:hover { color: #fff; }
+
+    .hero { padding: 54px 0 36px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(249,115,22,0.12); border: 1px solid rgba(249,115,22,0.35);
+      color: #fdba74; padding: 4px 11px; border-radius: 999px;
+      font-size: 12px; font-weight: 700; margin-bottom: 14px;
+    }
+    .hero h1 {
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.12; margin: 0 0 14px; letter-spacing: -0.5px;
+    }
+    .hero h1 em { font-style: normal; color: var(--orange); }
+    .hero p { max-width: 780px; color: #cbd5e1; font-size: 16px; margin: 0 0 22px; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
+    .pill {
+      background: var(--panel-2); border: 1px solid var(--border);
+      padding: 5px 11px; border-radius: 6px; font-size: 12.5px; color: #e2e8f0; font-weight: 600;
+    }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 16px; border-radius: 6px; font-weight: 700; font-size: 13.5px;
+      text-decoration: none; cursor: pointer; border: 1px solid var(--border);
+      background: var(--panel-2); color: var(--text);
+    }
+    .btn:hover { background: #1f303e; }
+    .btn-primary { background: var(--orange-deep); border-color: var(--orange); color: #fff; }
+    .btn-primary:hover { background: var(--orange); }
+
+    section { padding: 34px 0; }
+    .sec-title {
+      font-size: 22px; font-weight: 800; margin: 0 0 6px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sec-sub { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+
+    .compare-card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px; box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+    }
+    .tab-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .tab-btn {
+      background: #0d161c; border: 1px solid var(--border); color: var(--muted);
+      padding: 6px 12px; border-radius: 6px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+    }
+    .tab-btn.active { background: #0284c7; border-color: var(--sky); color: #fff; }
+    .stage-frame {
+      position: relative; background: #070c10; border: 1px solid #1e2d38;
+      border-radius: 8px; overflow: hidden;
+    }
+    .stage-frame img {
+      width: 100%; display: block; max-height: 540px; object-fit: contain; cursor: zoom-in;
+    }
+    .stage-caption {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+      gap: 10px; padding: 10px 4px 2px; font-size: 13px; color: #cbd5e1;
+    }
+
+    .gallery-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;
+    }
+    .shot {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+      overflow: hidden; display: flex; flex-direction: column;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .shot:hover { transform: translateY(-2px); border-color: #38bdf8; }
+    .shot img {
+      width: 100%; height: 175px; object-fit: cover; object-position: top;
+      background: #080d12; cursor: zoom-in; border-bottom: 1px solid var(--border);
+    }
+    .shot-wide { grid-column: 1 / -1; }
+    .shot-wide img { height: auto; max-height: 440px; object-fit: contain; }
+    .shot-body { padding: 11px 12px; }
+    .shot-body h3 { margin: 0 0 4px; font-size: 14px; }
+    .shot-body p { margin: 0; font-size: 12.5px; color: var(--muted); }
+
+    .sandbox {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px;
+      display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; align-items: center;
+    }
+    @media (max-width: 840px) { .sandbox { grid-template-columns: 1fr; } }
+
+    .demo-bay-hdr {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 4px 9px; border-radius: 3px; font-size: 12px; font-weight: 800;
+      letter-spacing: 0.7px; margin-bottom: 8px; transition: background 0.2s;
+    }
+    .demo-strip {
+      display: grid; grid-template-columns: 11px 1fr 1.6fr 52px 46px;
+      background: #eef2f6; color: #0f172a; border: 1px solid #64748b;
+      border-radius: 3px; min-height: 66px; transition: transform 0.15s ease;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    }
+    .demo-strip.cocked { transform: translateX(16px); }
+    .ds-acc { cursor: pointer; border-right: 1px solid #94a3b8; }
+    .ds-blk {
+      padding: 4px 7px; border-right: 1px solid #94a3b8;
+      display: flex; flex-direction: column; justify-content: space-between; min-width: 0;
+    }
+    .ds-cs { font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 5px; }
+    .ds-sub { font-size: 11px; color: #334155; }
+    .ds-meta {
+      display: flex; justify-content: space-between; font-size: 11px; font-weight: 700;
+      border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;
+    }
+    .ds-route { font-size: 11px; color: #1e293b; margin: 2px 0; }
+    .ds-rmk {
+      border-top: 1px dashed #cbd5e1; padding-top: 2px; font-size: 10.5px;
+      display: flex; gap: 4px; align-items: center; cursor: text;
+    }
+    .ds-rmk input {
+      border: 1px solid #0284c7; border-radius: 2px; font-size: 10.5px;
+      color: #b91c1c; font-weight: 600; padding: 1px 4px; width: 100%; outline: none;
+    }
+    .ds-rwy {
+      padding: 3px; border-right: 1px solid #94a3b8;
+      display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    }
+    .ds-act {
+      background: #a9c6df; border: none; font-weight: 800; font-size: 12.5px;
+      cursor: pointer; color: #0f172a;
+    }
+    .ds-act:hover { background: #8bb4d9; }
+    .sandbox-ctrl { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+    .sandbox-note { font-size: 13px; color: #cbd5e1; }
+    .sandbox-note ul { margin: 8px 0 0 18px; padding: 0; color: var(--muted); }
+    .sandbox-note li { margin-bottom: 5px; }
+
+    .pipeline {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px;
+    }
+    .pipe-step {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px; position: relative;
+    }
+    .pipe-num {
+      font-size: 11px; font-weight: 800; color: var(--orange);
+      letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 4px;
+    }
+    .pipe-step h4 { margin: 0 0 6px; font-size: 15px; }
+    .pipe-step p { margin: 0; font-size: 12.5px; color: var(--muted); }
+
+    .feat-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;
+    }
+    .feat {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+    }
+    .feat h4 { margin: 0 0 6px; font-size: 14.5px; color: #f8fafc; }
+    .feat p { margin: 0; font-size: 12.5px; color: var(--muted); }
+
+    .codebox {
+      background: #070c10; border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px; font-size: 12.5px; color: #93c5fd; overflow-x: auto;
+    }
+
+    footer {
+      border-top: 1px solid var(--border); padding: 20px 0 36px;
+      color: var(--muted); font-size: 12.5px; text-align: center;
+    }
+
+    .lightbox {
+      position: fixed; inset: 0; background: rgba(4, 8, 12, 0.90);
+      display: none; align-items: center; justify-content: center; z-index: 100; padding: 24px;
+      cursor: zoom-out;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: 96vw; max-height: 92vh; border-radius: 6px; border: 1px solid #334857; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="container nav-inner">
+      <div class="brand">
+        <div class="brand-bar"></div>
+        FLIGHT <span>STRIPS</span>
+      </div>
+      <div class="nav-links">
+        <a href="#compare">In Action</a>
+        <a href="#themes">EFPS &amp; Themes</a>
+        <a href="#gallery">Screenshots</a>
+        <a href="#sandbox">Interactive Strip</a>
+        <a href="#features">Architecture</a>
+        <a href="#setup">Setup</a>
+        <a href="https://github.com/rostykk/flight-strips" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/rostykk/flight-strips/releases/latest" target="_blank" rel="noopener" style="color:var(--orange);">Download</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container">
+      <div class="hero-badge">Official Mods for Airside API · .NET 10 + Embedded Kestrel + WebView2</div>
+      <h1><em>Flight Strips</em>, a mod for Airside</h1>
+      <p>
+        An electronic flight progress strip bay for <a href="https://airsideatc.com/" target="_blank" rel="noopener" style="color:var(--sky);">Airside ATC Simulator</a> (MSFS 2024),
+        built strictly on Airside's official read-only <strong>Mods for Airside</strong> endpoint (<code>GET http://127.0.0.1:24774/traffic</code>).
+        View live clearances, calling timers, SID/STARs, squawks, ATIS/weather, and runway occupancy in a resizable desktop window, on a tablet over LAN, or as a transparent OBS overlay.
+      </p>
+      <div class="pill-row">
+        <span class="pill">8 ATC Presets (EFPS TWR / AIR / GMC / Dual RWY)</span>
+        <span class="pill">EFPS Cyan &amp; Buff Paper Theme</span>
+        <span class="pill">Bottom-Up RWY + OCC Alert</span>
+        <span class="pill">100% Official Mods API (Read-Only)</span>
+        <span class="pill">1-Row Bar &amp; OBS Overlay</span>
+        <span class="pill">Streamer Mode (Hides IPs)</span>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/rostykk/flight-strips/releases/latest/download/FlightStrips-Standalone-NoDotNetNeeded-win-x64.zip" target="_blank" rel="noopener">Download Standalone (No .NET Needed)</a>
+        <a class="btn" href="https://github.com/rostykk/flight-strips/releases/latest/download/FlightStrips-Lite-RequiresDotNet10-win-x64.zip" target="_blank" rel="noopener">Download Lite (Needs .NET 10)</a>
+        <a class="btn" href="https://github.com/rostykk/flight-strips" target="_blank" rel="noopener">GitHub Source</a>
+        <a class="btn" href="#sandbox">Interactive Strip</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="compare">
+      <h2 class="sec-title">Flight Strips in Action</h2>
+      <p class="sec-sub">Captured directly from built-in <strong>Demo Mode</strong> across all EFPS presets, themes, and overlay views. Click any screenshot to zoom fullscreen.</p>
+
+      <div class="compare-card">
+        <div class="tab-bar">
+          <button class="tab-btn active" data-img="img/demo-efps-twr.png" data-cap="EFPS Combined TWR (3 Col) in Demo Mode: cyan departures vs warm buff arrivals, Bottom-Up RWY stacking, clearance/takeoff/landing call timers, and ATIS/weather bar.">1. EFPS Combined TWR</button>
+          <button class="tab-btn" data-img="img/demo-all-traffic.png" data-cap="All Traffic (4 Col): CLEARANCE, PUSHBACK, GROUND MOVEMENT, HP RWY, SEQUENCE RWY, HANDOVER, FINAL RWY, and TAXI IN / STAND on one board.">2. All Traffic (4 Col)</button>
+          <button class="tab-btn" data-img="img/demo-air-twr.png" data-cap="AIR / Tower Control (3 Col): Holding Point, Runway Sequence, Final Approach, Handover, Vacated/Taxi In, and Delivery/Ground feed.">3. AIR / Tower Control</button>
+          <button class="tab-btn" data-img="img/demo-gmc-gnd.png" data-cap="GMC / Ground Control (3 Col): Clearance Delivery, Pushback, Taxi Out, Holding Point handoff to AIR, and Taxi In / Stand.">4. GMC / Ground Control</button>
+          <button class="tab-btn" data-img="img/demo-dual-rwy.png" data-cap="Dual Runway TWR (4 Col): Separate FINAL, RWY / SEQ, and HP columns for RWY1 and RWY2 alongside Delivery and Ground.">5. Dual Runway TWR</button>
+          <button class="tab-btn" data-img="img/demo-neutral-theme.png" data-cap="Classic Neutral Theme (EFPS Paper OFF): crisp white/slate paper contrast with all live call timers and metadata.">6. Neutral Classic Theme</button>
+          <button class="tab-btn" data-img="img/demo-bottom-third.png" data-cap="Bottom 1/3 Dock / OBS Strip Ribbon: compact horizontal queue prioritizing active radio calls plus live weather and ticker.">7. Bottom 1/3 Strip Ribbon</button>
+        </div>
+
+        <div class="stage-frame">
+          <img id="mainStageImg" src="img/demo-efps-twr.png" alt="Flight Strips EFPS Combined TWR Demo" />
+        </div>
+        <div class="stage-caption">
+          <span id="mainStageCaption">EFPS Combined TWR (3 Col) in Demo Mode: cyan departures vs warm buff arrivals, Bottom-Up RWY stacking, clearance/takeoff/landing call timers, and ATIS/weather bar.</span>
+          <span class="mono" style="color:var(--sky);font-size:12px;">Click image to zoom</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="themes">
+      <h2 class="sec-title">Strip Themes &amp; Real-World EFPS Design</h2>
+      <p class="sec-sub">Modeled after Electronic Flight Progress Strip towers (NATS EFPS, Eurocontrol) while using only Airside's official read-only HTTP API.</p>
+
+      <div class="feat-grid">
+        <div class="feat">
+          <h4>EFPS Paper vs Neutral Theme</h4>
+          <p>Toggle <strong>EFPS Paper</strong> in the top bar: departures tint <strong>sky-blue/cyan</strong> while arrivals tint <strong>warm buff/cream</strong>, or switch off for crisp neutral slate strips.</p>
+        </div>
+        <div class="feat">
+          <h4>Bottom-Up Runway Stacking</h4>
+          <p>With <strong>Bottom-Up RWY</strong> enabled, <code>HP</code>, <code>SEQ</code>, and <code>FINAL</code> strips stack upward toward the runway bar just like real tower bays.</p>
+        </div>
+        <div class="feat">
+          <h4>Runway Occupancy Alert (OCC)</h4>
+          <p>The <code>SEQUENCE RWY</code> header switches between green <code>CLEAR</code> and flashing red <code>OCCUPIED</code> whenever traffic is lining up, rolling, or landed.</p>
+        </div>
+        <div class="feat">
+          <h4>8 Position Presets + Layout Editor</h4>
+          <p>Switch between 8 built-in presets or customize 1–5 columns, combine stages, hide bays, and use <code>{RWY}</code>, <code>{RWY1}</code>, and <code>{RWY2}</code> titles.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="gallery">
+      <h2 class="sec-title">Presets, Themes &amp; Overlay Gallery</h2>
+      <p class="sec-sub">All screenshots captured directly from Demo Mode.</p>
+
+      <div class="gallery-grid">
+        <article class="shot shot-wide">
+          <img src="img/demo-efps-twr.png" alt="EFPS Combined TWR 3-column board" />
+          <div class="shot-body">
+            <h3>Featured: EFPS Combined TWR (3 Col)</h3>
+            <p>Cyan departures vs buff arrivals, Bottom-Up <code>RWY 13 / SEQ</code>, active call timers (<code>CLEARANCE 28s</code>, <code>TAKEOFF 14s</code>, <code>LANDING 9s</code>), and live ATIS/METAR header.</p>
+          </div>
+        </article>
+
+        <article class="shot">
+          <img src="img/demo-all-traffic.png" alt="All Traffic 4-column preset" />
+          <div class="shot-body">
+            <h3>1. All Traffic (4 Col)</h3>
+            <p>All 8 bays on one screen: Clearance, Pushback, Ground, HP, Sequence, Handover, Final, and Taxi In.</p>
+          </div>
+        </article>
+
+        <article class="shot">
+          <img src="img/demo-air-twr.png" alt="AIR Tower Control 3-column preset" />
+          <div class="shot-body">
+            <h3>2. AIR / Tower Control</h3>
+            <p>Tower-focused columns for Holding Point, Runway Sequence, Final Approach, Handover, and Vacated traffic.</p>
+          </div>
+        </article>
+
+        <article class="shot">
+          <img src="img/demo-gmc-gnd.png" alt="GMC Ground Control 3-column preset" />
+          <div class="shot-body">
+            <h3>3. GMC / Ground Control</h3>
+            <p>Surface movement view for Delivery, Pushback, Taxi Out, HP handoff to AIR, and inbound stands.</p>
+          </div>
+        </article>
+
+        <article class="shot">
+          <img src="img/demo-dual-rwy.png" alt="Dual Runway TWR 4-column preset" />
+          <div class="shot-body">
+            <h3>4. Dual Runway TWR</h3>
+            <p>Parallel runway columns (<code>RWY1</code> / <code>RWY2</code>) for multi-runway operations.</p>
+          </div>
+        </article>
+
+        <article class="shot">
+          <img src="img/demo-neutral-theme.png" alt="Neutral Classic Theme" />
+          <div class="shot-body">
+            <h3>5. Neutral Classic Theme</h3>
+            <p>High-contrast neutral paper strips when <strong>EFPS Paper</strong> is toggled off.</p>
+          </div>
+        </article>
+
+        <article class="shot">
+          <img src="img/demo-bottom-third.png" alt="Bottom 1/3 strip ribbon" />
+          <div class="shot-body">
+            <h3>6. Bottom 1/3 &amp; OBS Ribbon</h3>
+            <p>Single-row compact overlay prioritizing active pilot calls with live weather and ticker.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="sandbox">
+      <h2 class="sec-title">Try an Interactive Strip Right Here</h2>
+      <p class="sec-sub">Experience cock-out, inline remarks, advancing bays, and EFPS vs Neutral paper themes.</p>
+
+      <div class="sandbox">
+        <div>
+          <div id="demoBayHdr" class="demo-bay-hdr" style="background:#0295d6;color:#051622;">
+            <span id="demoBayTitle">CLEARANCE</span>
+            <span>1</span>
+          </div>
+
+          <div id="demoStrip" class="demo-strip">
+            <div id="demoAcc" class="ds-acc" style="background:#0284c7;" title="Click to cock out / highlight"></div>
+            <div class="ds-blk">
+              <div class="ds-cs mono">
+                <span>AEW5667</span>
+                <span id="demoPin" style="display:none;font-size:12px;">📌</span>
+              </div>
+              <div class="ds-sub">Aerosvit 5667</div>
+              <div class="ds-sub mono" style="font-size:10px;color:#475569;">STD A3</div>
+            </div>
+            <div class="ds-blk">
+              <div class="ds-meta mono">
+                <span>2415</span><span>UKBB</span><span>6000ft</span>
+              </div>
+              <div class="ds-route">Stand A3 · To UKBB · SID OLERA1D</div>
+              <div id="demoRmkWrap" class="ds-rmk" title="Click to type inline note">
+                <span style="font-weight:700;color:#64748b;">Rmk:</span>
+                <span id="demoRmkVal" style="color:#94a3b8;">click to add note...</span>
+              </div>
+            </div>
+            <div class="ds-rwy mono">
+              <span style="font-size:9.5px;font-weight:700;">B738/M</span>
+              <span style="font-size:16px;font-weight:800;">13</span>
+              <span style="font-size:9.5px;color:#475569;">YOU</span>
+            </div>
+            <button id="demoAct" class="ds-act mono" title="Advance to next bay">CLX</button>
+          </div>
+
+          <div class="sandbox-ctrl">
+            <button class="tab-btn" id="btnStepForward">Advance Bay (+1)</button>
+            <button class="tab-btn active" id="btnThemeCycle">Theme: EFPS Cyan (Dep)</button>
+            <button class="tab-btn" id="btnResetDemo">Reset</button>
+          </div>
+        </div>
+
+        <div class="sandbox-note">
+          <strong id="demoStatus" style="color:#fff;">State: Live strip in CLEARANCE.</strong>
+          <ul>
+            <li><strong>Click the left color bar</strong> to cock the strip out visually.</li>
+            <li><strong>Click <code>Rmk:</code></strong> to type a quick controller note and press Enter.</li>
+            <li><strong>Click <code>Advance Bay (+1)</code></strong> (or the right button) to pin it forward into Pushback / Ground / HP.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="features">
+      <h2 class="sec-title">How It Works (Official Mods for Airside API)</h2>
+      <p class="sec-sub">Zero Airside file edits, zero encrypted file reading, zero memory hooks — purely Airside's official read-only HTTP API.</p>
+
+      <div class="pipeline" style="margin-bottom:18px;">
+        <div class="pipe-step">
+          <div class="pipe-num">01 · Airside Mods API</div>
+          <h4>GET /traffic (1 Hz)</h4>
+          <p>Airside exposes live traffic, ATIS, weather, calling queues, and desk selection on <code>127.0.0.1:24774/traffic</code>.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-num">02 · TrafficClient (.NET 10)</div>
+          <h4>Read-Only Polling</h4>
+          <p>Lightweight <code>HttpClient</code> reads JSON snapshots cleanly and ignores unknown future fields.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-num">03 · Embedded Kestrel</div>
+          <h4>Local + LAN Server</h4>
+          <p>Serves the strip UI and <code>/api/traffic</code> on port <code>24775</code> with optional LAN binding and Streamer Mode.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-num">04 · WPF + WebView2</div>
+          <h4>Resizable &amp; Transparent</h4>
+          <p>Resizable native window with Opacity slider (35%–100%), Pin Top, 1-Row Bar dock, and OBS Browser Source.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="setup">
+      <h2 class="sec-title">Requirements &amp; Quick Start</h2>
+      <div class="feat-grid" style="margin-bottom:14px;">
+        <div class="feat">
+          <h4>1. Enable Mods for Airside</h4>
+          <p>In Airside: <strong>Settings &rarr; Mods for Airside &rarr; On &rarr; Turn on &rarr; Save</strong>. Works with Airside <code>0.8.0.6+</code> and lights up all strip fields on <code>0.8.0.9+</code>.</p>
+        </div>
+        <div class="feat">
+          <h4>2. Run Flight Strips</h4>
+          <p>Download <strong>Standalone</strong> (no .NET install needed) and run <code>FlightStrips.exe</code>, or build from source with .NET 10 SDK.</p>
+        </div>
+      </div>
+      <pre class="codebox mono">git clone https://github.com/rostykk/flight-strips.git
+cd flight-strips
+dotnet build FlightStrips.csproj -c Release
+start.bat</pre>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      Flight Strips, a mod for Airside — Read-only Electronic Flight Progress Strip companion using Airside's official <code>127.0.0.1:24774/traffic</code> API.
+    </div>
+  </footer>
+
+  <div id="lightbox" class="lightbox">
+    <img id="lightboxImg" src="" alt="Preview" />
+  </div>
+
+  <script>
+    (() => {
+      const stageImg = document.getElementById("mainStageImg");
+      const stageCap = document.getElementById("mainStageCaption");
+      document.querySelectorAll(".tab-btn[data-img]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".tab-btn[data-img]").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          stageImg.src = btn.dataset.img;
+          stageCap.textContent = btn.dataset.cap;
+        });
+      });
+
+      const lb = document.getElementById("lightbox");
+      const lbImg = document.getElementById("lightboxImg");
+      function openZoom(src) {
+        lbImg.src = src;
+        lb.classList.add("open");
+      }
+      stageImg.addEventListener("click", () => openZoom(stageImg.src));
+      document.querySelectorAll(".shot img").forEach((img) => {
+        img.addEventListener("click", () => openZoom(img.src));
+      });
+      lb.addEventListener("click", () => lb.classList.remove("open"));
+
+      const STAGES = [
+        { name: "CLEARANCE", bg: "#0295d6", ink: "#051622", acc: "#0284c7", code: "CLX" },
+        { name: "PUSHBACK", bg: "#e8b300", ink: "#1f1700", acc: "#eab308", code: "PB" },
+        { name: "GROUND MOVEMENT", bg: "#e6d600", ink: "#1f1d00", acc: "#f59e0b", code: "TXI" },
+        { name: "HP RWY 13", bg: "#77e600", ink: "#0b1c00", acc: "#65a30d", code: "H/S" },
+      ];
+      let viewIdx = 0;
+      let rmkText = "";
+      const THEMES = [
+        { label: "Theme: EFPS Cyan (Dep)", bg: "#e1eeff", border: "#60a5fa" },
+        { label: "Theme: EFPS Buff (Arr)", bg: "#fef3c7", border: "#d97706" },
+        { label: "Theme: Neutral Paper", bg: "#eef2f6", border: "#64748b" },
+      ];
+      let themeIdx = 0;
+
+      const hdr = document.getElementById("demoBayHdr");
+      const title = document.getElementById("demoBayTitle");
+      const acc = document.getElementById("demoAcc");
+      const pin = document.getElementById("demoPin");
+      const act = document.getElementById("demoAct");
+      const status = document.getElementById("demoStatus");
+      const stripEl = document.getElementById("demoStrip");
+      const themeBtn = document.getElementById("btnThemeCycle");
+
+      function syncDemo() {
+        const vb = STAGES[viewIdx];
+        const th = THEMES[themeIdx];
+        stripEl.style.background = th.bg;
+        stripEl.style.borderColor = th.border;
+        themeBtn.textContent = th.label;
+        hdr.style.background = vb.bg;
+        hdr.style.color = vb.ink;
+        title.textContent = vb.name;
+        acc.style.background = vb.acc;
+        act.textContent = vb.code;
+        pin.style.display = viewIdx > 0 ? "inline" : "none";
+        status.textContent = viewIdx > 0 ? `Pinned in ${vb.name} (📌).` : `Live strip in ${vb.name}.`;
+      }
+
+      acc.addEventListener("click", () => stripEl.classList.toggle("cocked"));
+      themeBtn.addEventListener("click", () => { themeIdx = (themeIdx + 1) % THEMES.length; syncDemo(); });
+      function stepForward() { if (viewIdx < STAGES.length - 1) { viewIdx++; syncDemo(); } }
+      act.addEventListener("click", stepForward);
+      document.getElementById("btnStepForward").addEventListener("click", stepForward);
+      document.getElementById("btnResetDemo").addEventListener("click", () => {
+        viewIdx = 0; stripEl.classList.remove("cocked"); syncDemo();
+      });
+
+      const rmkWrap = document.getElementById("demoRmkWrap");
+      const rmkVal = document.getElementById("demoRmkVal");
+      rmkWrap.addEventListener("click", () => {
+        if (rmkWrap.querySelector("input")) return;
+        const inp = document.createElement("input");
+        inp.value = rmkText;
+        inp.placeholder = "Type remark + Enter...";
+        rmkVal.replaceWith(inp);
+        inp.focus();
+        function finish(save) {
+          if (save) rmkText = inp.value.trim();
+          rmkVal.textContent = rmkText || "click to add note...";
+          rmkVal.style.color = rmkText ? "#b91c1c" : "#94a3b8";
+          rmkVal.style.fontWeight = rmkText ? "600" : "400";
+          inp.replaceWith(rmkVal);
+        }
+        inp.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") finish(true);
+          if (e.key === "Escape") finish(false);
+        });
+        inp.addEventListener("blur", () => finish(true));
+      });
+
+      syncDemo();
+    })();
+  </script>
+</body>
+</html>

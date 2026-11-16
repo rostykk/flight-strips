@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flight Strips, a mod for Airside</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot" id="statusDot"></span>
+      <strong id="icaoBadge">----</strong>
+      <span class="muted" id="airportName">Waiting for Airside Mods API...</span>
+    </div>
+
+    <div class="metar" id="metarBar">
+      <span>WIND ---/--KT</span>
+      <span>QNH ----</span>
+      <span>VIS --</span>
+      <span id="atisPill" class="rwy-pill">ATIS -</span>
+      <span id="rwyPill" class="rwy-pill">RWY --</span>
+    </div>
+
+    <div class="view-tabs">
+      <select id="presetSelect" title="Switch Bay Layout Preset"></select>
+      <button id="btnLayoutEditor" class="btn" title="Customize bays: hide, rename, reorder, combine GND+HP">Layout Editor</button>
+      <button id="btnOverlayMode" class="btn" title="Draggable bottom-third viewer/OBS strip helper">Bottom 1/3</button>
+      <button id="btnCopyObs" class="btn" title="Copy transparent OBS Browser Source URL">OBS URL</button>
+      <label class="toggle-pre" title="Show parked pre-clearance aircraft">
+        <input type="checkbox" id="showPreChk" checked />
+        <span>Pre-CLR</span>
+      </label>
+      <label class="toggle-pre" title="Eurocontrol/NATS paper strip tinting (Blue=DEP, Buff=ARR)">
+        <input type="checkbox" id="efpsColorsChk" checked />
+        <span>EFPS Paper</span>
+      </label>
+      <label class="toggle-pre" title="Stack HP, RWY/SEQ, and FINAL strips bottom-up toward the runway threshold">
+        <input type="checkbox" id="bottomUpRwyChk" checked />
+        <span>Bottom-Up RWY</span>
+      </label>
+    </div>
+
+    <div class="mode-bar">
+      <button id="btnLive" class="btn btn-live active">LIVE</button>
+      <button id="btnDemo" class="btn" title="Preview with sample traffic when Airside is closed">Demo</button>
+    </div>
+
+    <div class="counters">
+      <span title="Pending pilot radio calls">CALL <strong id="cntCalls">0</strong></span>
+      <span title="Departures">DEP <strong id="cntDep">0</strong></span>
+      <span title="Arrivals">ARR <strong id="cntArr">0</strong></span>
+    </div>
+  </header>
+
+  <main id="bayBoard" class="board"></main>
+
+  <footer class="ticker" id="mainTicker">
+    <span class="ticker-tag">MODS API</span>
+    <div id="radioTicker" class="ticker-text">Polling http://127.0.0.1:24774/traffic (read-only)...</div>
+    <span id="serverFooterUrl" class="mono muted footer-url"></span>
+  </footer>
+
+  <!-- Bottom-third / OBS Overlay strip dock -->
+  <section id="overlayDock" class="overlay-dock hidden">
+    <div id="overlayDrag" class="overlay-hdr" title="Drag to reposition bottom-third overlay">
+      <span class="overlay-grip">⣿</span>
+      <span class="dot" id="ovDot"></span>
+      <strong id="ovIcao">----</strong>
+      <span id="ovWx" class="mono ov-wx">WIND ---/-- · QNH ----</span>
+      <span id="ovRwy" class="rwy-pill">RWY --</span>
+      <span id="ovRadio" class="ov-radio">Waiting for traffic...</span>
+      <button id="btnExitOverlay" class="btn ov-exit">Full Bay</button>
+    </div>
+    <div id="overlayStrips" class="overlay-strips"></div>
+  </section>
+
+  <!-- Edit strip modal -->
+  <div id="editModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-hdr">
+        <strong id="editTitle">Edit Strip</strong>
+        <button id="editClose" class="btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Remarks (Rmk:) <input id="edRmk" type="text" placeholder="Hold short B / Push tail east..." /></label>
+        <div class="modal-grid">
+          <label>Runway <input id="edRwy" type="text" /></label>
+          <label>Climb / Alt <input id="edAlt" type="text" /></label>
+          <label>SID / Route <input id="edSid" type="text" /></label>
+          <label>Squawk <input id="edSqk" type="text" /></label>
+        </div>
+      </div>
+      <div class="modal-ftr">
+        <button id="edUnpin" class="btn">Auto-Sync Bay</button>
+        <button id="edHide" class="btn">Hide Strip</button>
+        <button id="edSave" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Strip Layout Editor modal -->
+  <div id="layoutModal" class="modal hidden">
+    <div class="modal-card modal-wide">
+      <div class="modal-hdr">
+        <strong>Strip Bay Layout Editor</strong>
+        <button id="leClose" class="btn">✕</button>
+      </div>
+      <div class="le-toolbar">
+        <label>Preset Name <input id="leName" type="text" /></label>
+        <label>Columns
+          <select id="leCols">
+            <option value="1">1 Col</option>
+            <option value="2">2 Cols</option>
+            <option value="3">3 Cols</option>
+            <option value="4">4 Cols</option>
+            <option value="5">5 Cols</option>
+          </select>
+        </label>
+        <button id="leAddBay" class="btn btn-primary">+ Add Bay</button>
+        <button id="leClonePreset" class="btn">Save As New Preset</button>
+        <button id="leResetDefaults" class="btn" title="Restore built-in presets">Reset Presets</button>
+      </div>
+      <div class="le-hint muted">Tip: Use <code>{RWY}</code>, <code>{RWY1}</code>, or <code>{RWY2}</code> in bay titles, pick a Runway filter for dual-runway boards, or toggle stage chips to combine/hide bays.</div>
+      <div id="leBaysList" class="le-bays"></div>
+      <div class="modal-ftr">
+        <button id="leDeletePreset" class="btn">Delete Preset</button>
+        <div class="spacer"></div>
+        <button id="leCancel" class="btn">Cancel</button>
+        <button id="leSave" class="btn btn-primary">Save &amp; Apply Layout</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
