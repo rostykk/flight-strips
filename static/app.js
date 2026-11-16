@@ -222,6 +222,7 @@
   let baySigs = {};
   let lastDockSentH = 0;
   const hdoSeenAt = {};
+  let currentBayOrders = {};
 
   if (obsTransparent) {
     document.documentElement.classList.add("obs-transparent");
@@ -452,7 +453,6 @@
         // Auto-clear pin once live telemetry catches up to or passes the pinned bay
         if (liveRank >= 0 && bayMaxRank >= 0 && liveRank >= bayMaxRank && (pinnedBay.stages || []).includes(s.stage)) {
           delete getOv(s.callsign).pinBay;
-          delete getOv(s.callsign).order;
           s.pinBay = "";
           saveOverrides();
         } else {
@@ -665,10 +665,16 @@
       const cs = e.dataTransfer.getData("text/plain") || draggingCs;
       if (!cs || cs === s.callsign) return;
       const ov = getOv(cs);
-      ov.pinBay = bayId;
       const rect = el.getBoundingClientRect();
       const before = (e.clientY - rect.top) < rect.height / 2;
-      ov.order = before ? (s.order - 0.5) : (s.order + 0.5);
+      const list = (currentBayOrders[bayId] || []).filter((c) => c !== cs);
+      const targetIdx = list.indexOf(s.callsign);
+      const insertAt = targetIdx >= 0 ? (before ? targetIdx : targetIdx + 1) : list.length;
+      list.splice(insertAt, 0, cs);
+      list.forEach((c, idx) => { getOv(c).order = idx; });
+      if (!(currentBayOrders[bayId] || []).includes(cs)) {
+        ov.pinBay = bayId;
+      }
       saveOverrides();
       render();
     });
@@ -845,8 +851,12 @@
           const cs = e.dataTransfer.getData("text/plain") || draggingCs;
           if (!cs) return;
           const ov = getOv(cs);
-          ov.pinBay = b.id;
-          ov.order = Date.now() / 1000;
+          const list = (currentBayOrders[b.id] || []).filter((c) => c !== cs);
+          list.push(cs);
+          list.forEach((c, idx) => { getOv(c).order = idx; });
+          if (!(currentBayOrders[b.id] || []).includes(cs)) {
+            ov.pinBay = b.id;
+          }
           saveOverrides();
           render();
         });
@@ -879,6 +889,7 @@
         }
         return a.apiIndex - b2.apiIndex;
       });
+      currentBayOrders[b.id] = items.map((x) => x.callsign);
 
       const listEl = bayEl.querySelector(".bay-list");
       const isRwyBay = (b.stages || []).some((st) => st === "HP" || st === "SEQ" || st === "FINAL");
