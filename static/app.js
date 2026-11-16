@@ -221,6 +221,7 @@
   let boardSig = "";
   let baySigs = {};
   let lastDockSentH = 0;
+  const hdoSeenAt = {};
 
   if (obsTransparent) {
     document.documentElement.classList.add("obs-transparent");
@@ -313,6 +314,23 @@
     const stage = mapStage(ac);
     const dep = isDeparture(ac);
     const doing = (ac.doing || "").toLowerCase();
+
+    // Auto-clear departed HDO strips instead of keeping them for ~7 min in /traffic
+    if (stage === "HDO") {
+      if (!hdoSeenAt[cs]) hdoSeenAt[cs] = Date.now();
+      const elapsedMs = Date.now() - hdoSeenAt[cs];
+      const alreadyOnDep = (ac.position || "").toLowerCase() === "departure" && ac.yours === false && !ac.calling;
+      if (elapsedMs > (alreadyOnDep ? 15000 : 45000)) {
+        return null;
+      }
+    } else {
+      delete hdoSeenAt[cs];
+      if (ov.hdoDismissed) {
+        delete ov.hdoDismissed;
+        saveOverrides();
+      }
+    }
+    if (ov.hdoDismissed && stage === "HDO") return null;
     const altVal = ov.alt ?? (ac.initial_alt_ft ? `${ac.initial_alt_ft}ft` : "");
     const sidVal = ov.sid ?? (dep ? (ac.sid || ac.destination || "") : (ac.star || ""));
     const rwyVal = ov.runway ?? (ac.runway || "");
@@ -563,7 +581,11 @@
 
     el.querySelector(".s-act").addEventListener("click", (e) => {
       e.stopPropagation();
-      if (nextId) {
+      if (s.stage === "HDO") {
+        getOv(s.callsign).hdoDismissed = true;
+        saveOverrides();
+        render();
+      } else if (nextId) {
         getOv(s.callsign).pinBay = nextId;
         saveOverrides();
         render();
@@ -723,7 +745,7 @@
     if (inlineEditingCs) return;
     const data = demoMode ? DEMO_TRAFFIC : rawTraffic;
     const acList = Array.isArray(data?.aircraft) ? data.aircraft : [];
-    const strips = acList.map(buildStrip);
+    const strips = acList.map(buildStrip).filter(Boolean);
     const rwys = activeRunwaysList(data);
 
     renderHeader(data, strips);
