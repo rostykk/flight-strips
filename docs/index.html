@@ -312,7 +312,7 @@
         </div>
         <div class="feat">
           <h4>Runway Occupancy Alert (OCC)</h4>
-          <p>The <code>SEQUENCE RWY</code> header switches between green <code>CLEAR</code> and flashing red <code>OCCUPIED</code> whenever traffic is lining up, rolling, or landed.</p>
+          <p>The <code>SEQUENCE RWY</code> header switches between green <code>CLEAR</code> and flashing red <code>OCC · CALLSIGN</code> whenever traffic is lining up, rolling, or landed.</p>
         </div>
         <div class="feat">
           <h4>8 Position Presets + Layout Editor</h4>
@@ -403,11 +403,11 @@
                 <span id="demoPin" style="display:none;font-size:12px;">📌</span>
               </div>
               <div class="ds-sub">Aerosvit 5667</div>
-              <div class="ds-sub mono" style="font-size:10px;color:#475569;">STD A3</div>
+              <div class="ds-sub mono" style="font-size:10px;color:#475569;">UKLL St A3</div>
             </div>
             <div class="ds-blk">
               <div class="ds-meta mono">
-                <span>2415</span><span>UKBB</span><span>6000ft</span>
+                <span>6000</span><span>2415</span><span>UKBB</span><span>I</span>
               </div>
               <div class="ds-route">Stand A3 · To UKBB · SID OLERA1D</div>
               <div id="demoRmkWrap" class="ds-rmk" title="Click to type inline note">
@@ -420,7 +420,7 @@
               <span style="font-size:16px;font-weight:800;">13</span>
               <span style="font-size:9.5px;color:#475569;">YOU</span>
             </div>
-            <button id="demoAct" class="ds-act mono" title="Advance to next bay">CLX</button>
+            <button id="demoAct" class="ds-act mono" title="Advance to next bay">CLR</button>
           </div>
 
           <div class="sandbox-ctrl">
@@ -524,10 +524,10 @@ start.bat</pre>
       lb.addEventListener("click", () => lb.classList.remove("open"));
 
       const STAGES = [
-        { name: "CLEARANCE", bg: "#0295d6", ink: "#051622", acc: "#0284c7", code: "CLX" },
-        { name: "PUSHBACK", bg: "#e8b300", ink: "#1f1700", acc: "#eab308", code: "PB" },
+        { name: "CLEARANCE", bg: "#0295d6", ink: "#051622", acc: "#0284c7", code: "CLR" },
+        { name: "PUSHBACK", bg: "#e8b300", ink: "#1f1700", acc: "#eab308", code: "CPB" },
         { name: "GROUND MOVEMENT", bg: "#e6d600", ink: "#1f1d00", acc: "#f59e0b", code: "TXI" },
-        { name: "HP RWY 13", bg: "#77e600", ink: "#0b1c00", acc: "#65a30d", code: "H/S" },
+        { name: "HP RWY 13", bg: "#77e600", ink: "#0b1c00", acc: "#65a30d", code: "RDY" },
       ];
       let viewIdx = 0;
       let rmkText = "";
