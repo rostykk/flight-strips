@@ -36,6 +36,10 @@ Click **LAN: Off** -> **LAN: On** in the titlebar, then open `http://<your-PC-IP
 
 Only `GET http://127.0.0.1:24774/traffic` at 1 Hz (read-only).
 
+### Known API Limitation
+
+- **Scheduled Time / ETA (`etd` / `eta`):** Not yet exposed by Airside's official Mods for Airside `/traffic` endpoint, so scheduled-time display and chronological strip sorting are not yet available. Flight Strips already includes a forward-compatible slot and will display it automatically if Airside adds it in a future update.
+
 ## License
 
 MIT

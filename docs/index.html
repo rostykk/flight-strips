@@ -481,6 +481,7 @@
           <p>Download <strong>Standalone</strong> (no .NET install needed) and run <code>FlightStrips.exe</code>, or build from source with .NET 10 SDK.</p>
         </div>
       </div>
+      <p class="sec-sub" style="margin-bottom:14px;"><strong>Known API Limitation:</strong> Scheduled ETD / ETA time is not yet exposed by Airside's official <code>/traffic</code> endpoint, so chronological scheduled-time strip sorting is not yet available (a forward-compatible slot is already built in if Airside adds it later).</p>
       <pre class="codebox mono">git clone https://github.com/rostykk/flight-strips.git
 cd flight-strips
 dotnet build FlightStrips.csproj -c Release
