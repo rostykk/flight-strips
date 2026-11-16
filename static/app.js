@@ -450,8 +450,11 @@
       if (pinnedBay) {
         const bayMaxRank = Math.max(...(pinnedBay.stages || []).map((st) => STAGE_RANK[st] ?? -1), -1);
         const liveRank = STAGE_RANK[s.stage] ?? -1;
-        // Auto-clear pin once live telemetry catches up to or passes the pinned bay
-        if (liveRank >= 0 && bayMaxRank >= 0 && liveRank >= bayMaxRank && (pinnedBay.stages || []).includes(s.stage)) {
+        const sameDir = (s.direction === "DEP")
+          ? (pinnedBay.stages || []).some((st) => ["PRE", "CLR", "PUSH", "GND", "HP", "SEQ", "HDO"].includes(st))
+          : (pinnedBay.stages || []).some((st) => ["FINAL", "TAXI_IN"].includes(st));
+        // Auto-clear pin once live telemetry reaches or passes the pinned bay
+        if (sameDir && liveRank >= 0 && bayMaxRank >= 0 && liveRank >= bayMaxRank) {
           delete getOv(s.callsign).pinBay;
           s.pinBay = "";
           saveOverrides();
