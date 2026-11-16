@@ -516,9 +516,84 @@
   }
 
   function clearDragIndicators() {
-    document.querySelectorAll(".drag-target-top,.drag-target-bot").forEach((n) => {
-      n.classList.remove("drag-target-top", "drag-target-bot");
+    document.querySelectorAll(".drag-target-top,.drag-target-bot,.drag-over").forEach((n) => {
+      n.classList.remove("drag-target-top", "drag-target-bot", "drag-over");
     });
+  }
+
+  function startPointerDrag(downEv, cs, srcEl) {
+    const startX = downEv.clientX;
+    const startY = downEv.clientY;
+    let active = false;
+    let dropTarget = null; // { type: "strip", cs, bayId, before } | { type: "bay", bayId }
+
+    function onMove(ev) {
+      if (!active) {
+        if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < 6) return;
+        active = true;
+        draggingCs = cs;
+        srcEl.style.opacity = "0.55";
+        document.body.style.cursor = "grabbing";
+      }
+      clearDragIndicators();
+      dropTarget = null;
+      const hit = document.elementFromPoint(ev.clientX, ev.clientY);
+      const targetStrip = hit?.closest(".strip[data-cs]");
+      if (targetStrip && targetStrip.dataset.cs !== cs) {
+        const rect = targetStrip.getBoundingClientRect();
+        const before = (ev.clientY - rect.top) < rect.height / 2;
+        targetStrip.classList.add(before ? "drag-target-top" : "drag-target-bot");
+        dropTarget = { type: "strip", cs: targetStrip.dataset.cs, bayId: targetStrip.dataset.bay, before };
+        return;
+      }
+      const targetBay = hit?.closest(".bay[data-bay]");
+      if (targetBay) {
+        targetBay.classList.add("drag-over");
+        dropTarget = { type: "bay", bayId: targetBay.dataset.bay };
+      }
+    }
+
+    function onUp() {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      if (!active) return;
+
+      srcEl.style.opacity = "";
+      document.body.style.cursor = "";
+      clearDragIndicators();
+      draggingCs = null;
+
+      if (dropTarget?.type === "strip") {
+        const { cs: targetCs, bayId, before } = dropTarget;
+        const list = (currentBayOrders[bayId] || []).filter((c) => c !== cs);
+        const targetIdx = list.indexOf(targetCs);
+        const insertAt = targetIdx >= 0 ? (before ? targetIdx : targetIdx + 1) : list.length;
+        list.splice(insertAt, 0, cs);
+        list.forEach((c, idx) => { getOv(c).order = idx; });
+        if (!(currentBayOrders[bayId] || []).includes(cs)) {
+          getOv(cs).pinBay = bayId;
+        }
+        saveOverrides();
+        render();
+      } else if (dropTarget?.type === "bay") {
+        const { bayId } = dropTarget;
+        const list = (currentBayOrders[bayId] || []).filter((c) => c !== cs);
+        list.push(cs);
+        list.forEach((c, idx) => { getOv(c).order = idx; });
+        if (!(currentBayOrders[bayId] || []).includes(cs)) {
+          getOv(cs).pinBay = bayId;
+        }
+        saveOverrides();
+        render();
+      } else {
+        render();
+      }
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   }
 
   function startInlineRmk(el, s) {
@@ -571,7 +646,8 @@
     const heldCls = s.selected ? "is-held" : "";
     el.className = `strip ${dirCls} ${s.cocked ? "cocked" : ""} ${callCls} ${heldCls}`;
     el.dataset.cs = s.callsign;
-    el.draggable = true;
+    el.dataset.bay = bayId;
+    el.dataset.order = String(s.order ?? 9999);
 
     const callTag = s.calling ? `<span class="call-badge">${esc(s.calling.toUpperCase())} ${s.waitingS}s</span>` : "";
     const rmkHtml = s.rmk
@@ -639,44 +715,10 @@
 
     el.addEventListener("dblclick", () => openEditModal(s));
 
-    el.addEventListener("dragstart", (e) => {
-      draggingCs = s.callsign;
-      e.dataTransfer.setData("text/plain", s.callsign);
-    });
-
-    el.addEventListener("dragend", () => {
-      draggingCs = null;
-      clearDragIndicators();
-    });
-
-    el.addEventListener("dragover", (e) => {
-      if (!draggingCs || draggingCs === s.callsign) return;
-      e.preventDefault();
-      clearDragIndicators();
-      const rect = el.getBoundingClientRect();
-      const before = (e.clientY - rect.top) < rect.height / 2;
-      el.classList.add(before ? "drag-target-top" : "drag-target-bot");
-    });
-
-    el.addEventListener("drop", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      clearDragIndicators();
-      const cs = e.dataTransfer.getData("text/plain") || draggingCs;
-      if (!cs || cs === s.callsign) return;
-      const ov = getOv(cs);
-      const rect = el.getBoundingClientRect();
-      const before = (e.clientY - rect.top) < rect.height / 2;
-      const list = (currentBayOrders[bayId] || []).filter((c) => c !== cs);
-      const targetIdx = list.indexOf(s.callsign);
-      const insertAt = targetIdx >= 0 ? (before ? targetIdx : targetIdx + 1) : list.length;
-      list.splice(insertAt, 0, cs);
-      list.forEach((c, idx) => { getOv(c).order = idx; });
-      if (!(currentBayOrders[bayId] || []).includes(cs)) {
-        ov.pinBay = bayId;
-      }
-      saveOverrides();
-      render();
+    el.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      if (e.target.closest(".s-accent, .s-rmk-wrap, .s-act, input, button")) return;
+      startPointerDrag(e, s.callsign, el);
     });
 
     return el;
@@ -791,7 +833,7 @@
   }
 
   function render() {
-    if (inlineEditingCs) return;
+    if (inlineEditingCs || draggingCs) return;
     const data = demoMode ? DEMO_TRAFFIC : rawTraffic;
     const acList = Array.isArray(data?.aircraft) ? data.aircraft : [];
     const strips = acList.map((ac, idx) => buildStrip(ac, idx)).filter(Boolean);
