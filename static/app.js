@@ -963,14 +963,17 @@
   });
 
   $("btnOverlayMode").addEventListener("click", () => {
-    overlayPreview = true;
-    document.body.classList.add("overlay-active");
+    overlayPreview = !overlayPreview;
+    document.body.classList.toggle("overlay-active", overlayPreview);
+    $("btnOverlayMode").classList.toggle("active", overlayPreview);
+    if (!overlayPreview) boardSig = "";
     render();
   });
 
   $("btnExitOverlay").addEventListener("click", () => {
     overlayPreview = false;
     document.body.classList.remove("overlay-active");
+    $("btnOverlayMode").classList.remove("active");
     boardSig = "";
     render();
   });
