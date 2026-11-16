@@ -354,6 +354,11 @@
       ? (ac.stand ? `${airport ? `${airport} ` : ""}St ${ac.stand}` : (ac.position || "").toUpperCase())
       : (ac.stand ? `${airport ? `${airport} ` : ""}St ${ac.stand}` : (ac.star || "ARR"));
 
+    const canList = Array.isArray(ac.can) ? ac.can : [];
+    const canSet = new Set(canList.map((c) => String(c).toLowerCase()));
+    const takeoffCleared = doing === "taking off" || canSet.has("cancel takeoff") || canSet.has("reject takeoff");
+    const landingCleared = doing === "on final" && !canSet.has("landing") && canSet.has("go around");
+
     return {
       callsign: cs,
       telephony: ac.telephony || "",
@@ -375,7 +380,9 @@
       yours: ac.yours,
       handoff: ac.handoff || "",
       selected: rawTraffic?.selected === cs,
-      can: Array.isArray(ac.can) ? ac.can : [],
+      takeoffCleared,
+      landingCleared,
+      can: canList,
       routeText: routeParts.join(" · "),
       rmk: ov.rmk || "",
       cocked: Boolean(ov.cocked),
@@ -460,11 +467,12 @@
     if (s.stage === "CLR") return "CLR";
     if (s.stage === "PUSH") return calling === "taxi" ? "TXI" : "CPB";
     if (s.stage === "GND") return "TXI";
-    if (s.stage === "HP") return calling === "takeoff" || calling === "line up" ? "RDY" : "HP";
-    if (s.stage === "SEQ") return doing === "taking off" ? "CTL" : "LUW";
+    if (s.stage === "HP") return s.takeoffCleared ? "CTL" : (calling === "takeoff" || calling === "line up" ? "RDY" : "HP");
+    if (s.stage === "SEQ") return s.takeoffCleared ? "CTL" : "LUW";
     if (s.stage === "HDO") return "HDO";
     if (s.stage === "FINAL") {
       if (doing === "landed") return "VAC";
+      if (s.landingCleared) return "CLD";
       if (calling === "landing") return "LND";
       return "APP";
     }
@@ -535,7 +543,7 @@
       ? `<span class="s-rmk">${esc(s.rmk)}</span>`
       : `<span class="s-rmk empty">${s.selected ? "Selected on desk" : "Click to add note..."}</span>`;
     const typeWake = [s.type, s.wake].filter(Boolean).join("/");
-    const actCls = s.calling ? "act-ready" : (s.stage === "SEQ" ? "act-ctl" : (s.stage === "HDO" ? "act-cld" : ""));
+    const actCls = s.calling ? "act-ready" : (s.takeoffCleared ? "act-ctl" : (s.landingCleared ? "act-cld" : ""));
     const nextId = nextBayId(bayId, visibleBays, s, rwys);
 
     el.innerHTML = `
