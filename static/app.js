@@ -308,7 +308,7 @@
     return st !== "FINAL" && st !== "TAXI_IN";
   }
 
-  function buildStrip(ac) {
+  function buildStrip(ac, apiIndex) {
     const cs = ac.callsign || "UNKNOWN";
     const ov = overrides[cs] || {};
     const stage = mapStage(ac);
@@ -403,6 +403,7 @@
       cocked: Boolean(ov.cocked),
       pinBay: ov.pinBay || "",
       order: ov.order ?? 9999,
+      apiIndex: apiIndex ?? 0,
       hidden: Boolean(ov.hidden),
       held: doing === "holding short" || Boolean(ac.calling),
     };
@@ -787,7 +788,7 @@
     if (inlineEditingCs) return;
     const data = demoMode ? DEMO_TRAFFIC : rawTraffic;
     const acList = Array.isArray(data?.aircraft) ? data.aircraft : [];
-    const strips = acList.map(buildStrip).filter(Boolean);
+    const strips = acList.map((ac, idx) => buildStrip(ac, idx)).filter(Boolean);
     const rwys = activeRunwaysList(data);
 
     renderHeader(data, strips);
@@ -865,9 +866,18 @@
     for (const b of visibleBays) {
       const bayEl = board.querySelector(`.bay[data-bay="${CSS.escape(b.id)}"]`);
       if (!bayEl) continue;
+      const isFinalBay = (b.stages || []).includes("FINAL");
       const items = grouped[b.id].sort((a, b2) => {
         if (a.order !== b2.order) return a.order - b2.order;
-        return a.callsign.localeCompare(b2.callsign);
+        const aw = a.calling ? (a.waitingS || 0) : -1;
+        const bw = b2.calling ? (b2.waitingS || 0) : -1;
+        if (aw !== bw) return bw - aw;
+        if (isFinalBay) {
+          const ad = a.distanceNm != null ? Number(a.distanceNm) : 9999;
+          const bd = b2.distanceNm != null ? Number(b2.distanceNm) : 9999;
+          if (ad !== bd) return ad - bd;
+        }
+        return a.apiIndex - b2.apiIndex;
       });
 
       const listEl = bayEl.querySelector(".bay-list");
