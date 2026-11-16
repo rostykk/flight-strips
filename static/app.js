@@ -295,8 +295,8 @@
     if (doing === "holding short") return "HP";
     if (doing === "lining up" || doing === "taking off") return "SEQ";
     if (doing === "departed") return "HDO";
-    if (doing === "arriving" || doing === "on final") return "FINAL";
-    if (doing === "landed" || doing === "taxiing in" || doing === "parked") return "TAXI_IN";
+    if (doing === "arriving" || doing === "on final" || doing === "landed") return "FINAL";
+    if (doing === "taxiing in" || doing === "parked") return "TAXI_IN";
     return ac.destination || ac.sid ? "CLR" : "FINAL";
   }
 
@@ -331,16 +331,23 @@
     if (ac.handoff) routeParts.push(`HO ${ac.handoff}`);
     if (!routeParts.length && ac.doing) routeParts.push(ac.doing);
 
+    const airport = rawTraffic?.airport || (demoMode ? "UKLL" : "");
+    const originTxt = dep
+      ? (ac.stand ? `${airport ? `${airport} ` : ""}St ${ac.stand}` : (ac.position || "").toUpperCase())
+      : (ac.stand ? `${airport ? `${airport} ` : ""}St ${ac.stand}` : (ac.star || "ARR"));
+
     return {
       callsign: cs,
       telephony: ac.telephony || "",
-      origin: dep ? (ac.stand ? `STD ${ac.stand}` : (ac.position || "").toUpperCase()) : (ac.distance_nm != null ? `${Number(ac.distance_nm).toFixed(1)} NM` : "ARR"),
+      origin: originTxt,
       type: ac.type || "",
       wake: ac.wake || "",
       runway: rwyVal,
       squawk: sqkVal,
+      dest: ac.destination || "",
       sid: sidVal,
-      alt: altVal,
+      alt: ac.initial_alt_ft ? String(ac.initial_alt_ft) : (ov.alt || ""),
+      distanceNm: ac.distance_nm,
       schedTime: ac.scheduled_time || ac.sched_time || ac.time || "",
       direction: dep ? "DEP" : "ARR",
       stage,
@@ -429,16 +436,22 @@
   }
 
   function stripActionLabel(s) {
-    if (s.calling) return s.calling.slice(0, 4).toUpperCase();
+    const doing = (s.doing || "").toLowerCase();
+    const calling = (s.calling || "").toLowerCase();
     if (s.stage === "PRE") return "PRE";
-    if (s.stage === "CLR") return "CLX";
-    if (s.stage === "PUSH") return "PB";
+    if (s.stage === "CLR") return "CLR";
+    if (s.stage === "PUSH") return calling === "taxi" ? "TXI" : "CPB";
     if (s.stage === "GND") return "TXI";
-    if (s.stage === "HP") return "H/S";
-    if (s.stage === "SEQ") return "T/O";
-    if (s.stage === "HDO") return "H/O";
-    if (s.stage === "FINAL") return "APP";
-    return "IN";
+    if (s.stage === "HP") return calling === "takeoff" || calling === "line up" ? "RDY" : "HP";
+    if (s.stage === "SEQ") return doing === "taking off" ? "CTL" : "LUW";
+    if (s.stage === "HDO") return "HDO";
+    if (s.stage === "FINAL") {
+      if (doing === "landed") return "VAC";
+      if (calling === "landing") return "LND";
+      return "APP";
+    }
+    if (s.stage === "TAXI_IN") return doing === "parked" ? "GATE" : "PRK";
+    return "CLR";
   }
 
   function clearDragIndicators() {
@@ -516,10 +529,11 @@
       </div>
       <div class="s-block">
         <div class="s-topmeta">
+          <span>${esc(s.alt || "----")}</span>
           <span>${esc(s.squawk || "----")}</span>
-          <span class="s-dest">${esc(s.sid || s.doing)}</span>
+          <span class="s-dest">${esc(s.dest || "----")}</span>
           ${s.schedTime ? `<span>${esc(s.schedTime)}</span>` : ""}
-          <span>${esc(s.alt || "")}</span>
+          <span>I</span>
         </div>
         <div class="s-route" title="${esc(s.routeText)}">${esc(s.routeText)}</div>
         <div class="s-rmk-wrap" title="Click to edit strip remark">
@@ -529,7 +543,7 @@
       <div class="s-rwybox">
         <div class="s-type">${esc(typeWake)}</div>
         <div class="s-rwy">${esc(s.runway || "--")}</div>
-        <div class="s-spd">${esc(s.yours === true ? "YOU" : s.yours === false ? "AI" : "")}</div>
+        <div class="s-spd">${esc(s.distanceNm != null && s.distanceNm > 0.5 ? `${Number(s.distanceNm).toFixed(1)}nm` : (s.yours === true ? "YOU" : s.yours === false ? "AI" : ""))}</div>
       </div>
       <button class="s-act ${actCls}" title="${nextId ? "Click to move to next bay" : "Edit strip"}">${esc(stripActionLabel(s))}</button>
     `;
@@ -800,10 +814,13 @@
 
       const rwyStatusEl = bayEl.querySelector(".rwy-status");
       if ((b.stages || []).includes("SEQ")) {
-        const occ = items.some((s) => s.doing === "lining up" || s.doing === "taking off" || s.doing === "landed");
+        const bayFilter = resolveBayRunwayFilter(b, rwys);
+        const occStrips = strips.filter((s) =>
+          (s.doing === "lining up" || s.doing === "taking off" || s.doing === "landed") &&
+          (!bayFilter || bayFilter === "__NONE__" || (s.runway || "").toUpperCase() === bayFilter));
         rwyStatusEl.classList.remove("hidden");
-        rwyStatusEl.className = `rwy-status ${occ ? "occ" : "clr"}`;
-        rwyStatusEl.textContent = occ ? "OCCUPIED" : "CLEAR";
+        rwyStatusEl.className = `rwy-status ${occStrips.length ? "occ" : "clr"}`;
+        rwyStatusEl.textContent = occStrips.length ? `OCC · ${occStrips.map((x) => x.callsign).join(", ")}` : "CLEAR";
       } else {
         rwyStatusEl.classList.add("hidden");
       }
