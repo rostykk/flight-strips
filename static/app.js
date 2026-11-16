@@ -341,6 +341,7 @@
       squawk: sqkVal,
       sid: sidVal,
       alt: altVal,
+      schedTime: ac.scheduled_time || ac.sched_time || ac.time || "",
       direction: dep ? "DEP" : "ARR",
       stage,
       doing: ac.doing || "",
@@ -517,6 +518,7 @@
         <div class="s-topmeta">
           <span>${esc(s.squawk || "----")}</span>
           <span class="s-dest">${esc(s.sid || s.doing)}</span>
+          ${s.schedTime ? `<span>${esc(s.schedTime)}</span>` : ""}
           <span>${esc(s.alt || "")}</span>
         </div>
         <div class="s-route" title="${esc(s.routeText)}">${esc(s.routeText)}</div>
