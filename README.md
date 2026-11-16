@@ -36,9 +36,10 @@ Click **LAN: Off** -> **LAN: On** in the titlebar, then open `http://<your-PC-IP
 
 Only `GET http://127.0.0.1:24774/traffic` at 1 Hz (read-only).
 
-### Known API Limitation
+### Notes on API Scope
 
-- **Scheduled Time / ETA (`etd` / `eta`):** Not yet exposed by Airside's official Mods for Airside `/traffic` endpoint, so scheduled-time display and chronological strip sorting are not yet available. Flight Strips already includes a forward-compatible slot and will display it automatically if Airside adds it in a future update.
+- **No timetable / scheduled times:** By design, Airside's Mods for Airside feed carries only what the controller desk shows about active aircraft on the field (no timetable). Arrivals on approach show live `distance_nm`.
+- **AI-worked positions (`yours: false`):** When Airside works a position (or in Spotter mode), `can` is empty, so `CLD` / `CTL` clearance badges only light up when `yours` is `true`.
 
 ## License
 
